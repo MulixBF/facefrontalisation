@@ -32,7 +32,8 @@ def plot3d(p3ds):
     plt.show()
 
 
-class frontalizer():
+class Frontalizer:
+
     def __init__(self,refname):
         # initialise the model with the 3d reference face 
         # and the camera intrinsic parameters 
@@ -44,12 +45,14 @@ class frontalizer():
             self.refxy = ref['ref_XY']
             self.p3d = ref['p3d']
             self.refimg = ref['refimg']
+
+
     def get_headpose(self,p2d):
         assert(len(p2d) == len(self.p3d))
         p3_ = np.reshape(self.p3d,(-1,3,1)).astype(np.float)
         p2_ = np.reshape(p2d,(-1,2,1)).astype(np.float)
-        distCoeffs = np.zeros((5,1))
-        succ,rvec,tvec = cv2.solvePnP(p3_,p2_, self.A, distCoeffs)
+        dist_coeffs = np.zeros((5,1))
+        succ, rvec, tvec = cv2.solvePnP(p3_,p2_, self.A, dist_coeffs)
         if not succ:
             print('There is something wrong, please check.')
             return None
@@ -57,6 +60,8 @@ class frontalizer():
             matx = cv2.Rodrigues(rvec)
             ProjM_ = self.A.dot(np.insert(matx[0],3,tvec.T,axis=1))
             return rvec,tvec,ProjM_
+
+
     def frontalization(self,img_,facebb,p2d_):
         #we rescale the face region (twice as big as the detected face) before applying frontalisation
         #the rescaled size is WD x HT 
@@ -112,7 +117,7 @@ class frontalizer():
         sumleft = np.sum(synth_front[:,0:mline])
         sumright = np.sum(synth_front[:,mline:])
         sum_diff = sumleft - sumright
-        print sum_diff
+        print(sum_diff)
         if np.abs(sum_diff) > ACC_CONST:
             weights = np.zeros(sp_)
             if sum_diff > ACC_CONST:
@@ -136,22 +141,22 @@ class frontalizer():
 
 
 if __name__ == "__main__":
-    ##to make sure you have dlib 
+
     PATH_face_model = 'face_shape.dat'
     md_face = dlib.shape_predictor(PATH_face_model)
     face_det = dlib.get_frontal_face_detector()
-    fronter = frontalizer('ref3d.pkl')
-    #________________model initialisation 
-    #
+    fronter = Frontalizer('ref3d.pkl')
 
     # test your image 
-    img_name = '/home/hy306/Desktop/7.JPG'#names[k]
+    img_name = '/home/hy306/Desktop/7.JPG'
     img = plt.imread(img_name)
-    facedets = face_det(img,1)
+
+    facedets = face_det(img, 1)
+
     for det in facedets:
         shape = md_face(img,det)
         p2d = np.asarray([(shape.part(n).x, shape.part(n).y,) for n in range(shape.num_parts)], np.float32)
     st = time.time()
-    rawfront, symfront = fronter.frontalization(img,det,p2d)
-    print "eplased time:", time.time() - st 
+    rawfront, symfront = fronter.frontalization(img, det, p2d)
+    print("eplased time:", time.time() - st) 
     sm.toimage(np.round(symfront).astype(np.uint8)).show()
